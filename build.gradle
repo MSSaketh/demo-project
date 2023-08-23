@@ -2,6 +2,8 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.1.2'
 	id 'io.spring.dependency-management' version '1.1.2'
+	id 'com.palantir.docker' version '0.35.0'
+	id 'com.palantir.docker-run' version '0.35.0'
 }
 
 group = 'com.saketh'
@@ -22,4 +24,25 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.dockerPrepare.configure {
+	dependsOn(tasks.bootJar.name)
+}
+
+String imageName = "${project.group}/${project.name}"
+docker {
+	dockerfile file('Dockerfile')
+	dependsOn(tasks.findByPath("build"))
+	name imageName
+	files bootJar.archiveFile.get()
+	buildArgs(['JAR_FILE': "${bootJar.archiveFileName.get()}"])
+}
+dockerRun {
+	name "${project.name}-container"
+	image imageName
+	ports '8080:8080'
+	env 'SPRING_PROFILES_ACTIVE': 'dev'
+	daemonize true
+	clean false
 }
